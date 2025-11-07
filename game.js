@@ -149,7 +149,7 @@ function drawGrid() {
 }
 
 function draw() {
-  context.fillStyle = '#060a13';
+  context.fillStyle = '#87CEEB';
   context.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
   drawMatrix(arena, { x: 0, y: 0 });
