@@ -189,15 +189,14 @@ function renderPosts() {
 
   emptyState.classList.add('hidden');
   postsList.innerHTML = posts.map(post => `
-    <div class="post-item" onclick="showDetailView('${post.id}')">
-      <div class="post-header">
+    <div class="post-item">
+      <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
         <div class="post-date">${formatDate(post.date)}</div>
       </div>
-      <div class="post-preview">${escapeHtml(post.content)}</div>
       <div class="post-footer">
         <span class="post-id">#${post.id.substring(0, 8)}</span>
-        <button class="delete-btn" onclick="event.stopPropagation(); deletePost('${post.id}')">삭제</button>
+        <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
       </div>
     </div>
   `).join('');
