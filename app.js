@@ -195,7 +195,6 @@ function renderPosts() {
         <div class="post-date">${formatDate(post.date)}</div>
       </div>
       <div class="post-footer">
-        <span class="post-id">#${post.id.substring(0, 8)}</span>
         <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
       </div>
     </div>
@@ -216,7 +215,6 @@ function renderPostDetail(postId) {
       <h2 class="article-title">${escapeHtml(post.title)}</h2>
       <div class="article-meta">
         <span>작성일: ${formatDate(post.date)}</span>
-        <span>게시글 번호: #${post.id.substring(0, 8)}</span>
       </div>
     </div>
     <div class="article-content">${escapeHtml(post.content)}</div>
