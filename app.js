@@ -530,9 +530,9 @@ async function renderPopularPosts() {
   
   let html = '<div class="popular-posts-container">';
   
-  // 이번 주 BEST 추천
+  // 금주 인기글(추천순)
   html += '<div class="popular-post-category">';
-  html += '<h3 class="popular-title">이번 주 BEST 추천</h3>';
+  html += '<h3 class="popular-title">금주 인기글(추천순)</h3>';
   if (weekPopularByLikes && weekPopularByLikes.likeCount > 0) {
     html += `
       <div class="popular-post-item" onclick="showDetailView('${weekPopularByLikes.id}')">
@@ -544,13 +544,13 @@ async function renderPopularPosts() {
       </div>
     `;
   } else {
-    html += '<p class="no-popular-post">이번 주 BEST 추천이 없습니다.</p>';
+    html += '<p class="no-popular-post">금주 인기글(추천순)이 없습니다.</p>';
   }
   html += '</div>';
   
-  // 이번 주 BEST 댓글
+  // 금주 인기글(댓글순)
   html += '<div class="popular-post-category">';
-  html += '<h3 class="popular-title">이번 주 BEST 댓글</h3>';
+  html += '<h3 class="popular-title">금주 인기글(댓글순)</h3>';
   if (weekPopularByComments && weekPopularByComments.commentCount > 0) {
     html += `
       <div class="popular-post-item" onclick="showDetailView('${weekPopularByComments.id}')">
@@ -562,7 +562,7 @@ async function renderPopularPosts() {
       </div>
     `;
   } else {
-    html += '<p class="no-popular-post">이번 주 BEST 댓글이 없습니다.</p>';
+    html += '<p class="no-popular-post">금주 인기글(댓글순)이 없습니다.</p>';
   }
   html += '</div>';
   
