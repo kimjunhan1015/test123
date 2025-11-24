@@ -4,7 +4,6 @@ let comments = [];
 let currentPostId = null;
 const COLLECTION_NAME = 'posts';
 const COMMENTS_COLLECTION = 'comments';
-const LIKES_COLLECTION = 'likes';
 const AUTHOR_ID_KEY = 'anonymousBoardAuthorId';
 
 // 브라우저별 고유 식별자 가져오기 또는 생성
@@ -36,12 +35,6 @@ async function init() {
   const writeBtn = document.getElementById('writeBtn');
   if (listBtn) listBtn.style.display = 'none';
   if (writeBtn) writeBtn.style.display = 'none';
-  
-  // view-toggle 숨기기
-  const viewToggle = document.querySelector('.view-toggle');
-  if (viewToggle) {
-    viewToggle.style.display = 'none';
-  }
 }
 
 // Firebase에서 게시글 불러오기
@@ -157,43 +150,6 @@ async function deleteAllCommentsForPost(postId) {
   }
 }
 
-// 게시글의 모든 추천 삭제
-async function deleteAllLikesForPost(postId) {
-  try {
-    const { collection, getDocs, query, where, doc, deleteDoc, writeBatch } = window.firestoreFunctions;
-    const likesRef = collection(window.db, LIKES_COLLECTION);
-    const q = query(likesRef, where('postId', '==', postId));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return; // 추천이 없으면 종료
-    }
-    
-    // 배치로 삭제 (500개씩)
-    const batch = writeBatch(window.db);
-    let count = 0;
-    
-    querySnapshot.forEach((docSnapshot) => {
-      if (count < 500) { // Firestore 배치 제한
-        batch.delete(doc(window.db, LIKES_COLLECTION, docSnapshot.id));
-        count++;
-      }
-    });
-    
-    if (count > 0) {
-      await batch.commit();
-    }
-    
-    // 500개를 초과하는 경우 재귀 호출
-    if (querySnapshot.size > 500) {
-      await deleteAllLikesForPost(postId);
-    }
-  } catch (error) {
-    console.error('추천 일괄 삭제 실패:', error);
-    throw error;
-  }
-}
-
 // 특정 댓글의 모든 대댓글 삭제
 async function deleteAllRepliesForComment(commentId) {
   try {
@@ -257,13 +213,6 @@ async function showListView() {
   document.getElementById('listBtn').style.display = 'none'; // 목록 버튼 숨기기
   document.getElementById('writeBtn').classList.remove('active');
   document.getElementById('writeBtn').style.display = 'none'; // 상단 글쓰기 버튼 숨기기
-  
-  // view-toggle 전체 숨기기
-  const viewToggle = document.querySelector('.view-toggle');
-  if (viewToggle) {
-    viewToggle.style.display = 'none';
-  }
-  
   await renderPosts();
 }
 
@@ -275,13 +224,6 @@ function showWriteView() {
   document.getElementById('listBtn').style.display = 'block'; // 글쓰기 화면에서는 목록 버튼 표시
   document.getElementById('writeBtn').classList.add('active');
   document.getElementById('writeBtn').style.display = 'block'; // 글쓰기 화면에서는 글쓰기 버튼 표시
-  
-  // view-toggle 표시
-  const viewToggle = document.querySelector('.view-toggle');
-  if (viewToggle) {
-    viewToggle.style.display = 'flex';
-  }
-  
   document.getElementById('postForm').reset();
 }
 
@@ -291,13 +233,6 @@ function showDetailView(postId) {
   document.getElementById('detailView').classList.remove('hidden');
   document.getElementById('listBtn').style.display = 'none'; // 상세 화면에서도 목록 버튼 숨기기
   document.getElementById('writeBtn').style.display = 'none'; // 상세 화면에서도 글쓰기 버튼 숨기기
-  
-  // view-toggle 숨기기
-  const viewToggle = document.querySelector('.view-toggle');
-  if (viewToggle) {
-    viewToggle.style.display = 'none';
-  }
-  
   renderPostDetail(postId);
 }
 
@@ -352,88 +287,6 @@ async function getCommentCount(postId) {
   }
 }
 
-// 게시글의 추천 수 가져오기
-async function getLikeCount(postId) {
-  try {
-    const { collection, getDocs, query, where } = window.firestoreFunctions;
-    const likesRef = collection(window.db, LIKES_COLLECTION);
-    const q = query(likesRef, where('postId', '==', postId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
-  } catch (error) {
-    console.error('추천 수 가져오기 실패:', error);
-    return 0;
-  }
-}
-
-// 사용자가 이미 추천했는지 확인
-async function hasUserLiked(postId) {
-  try {
-    const currentAuthorId = getAuthorId();
-    const { collection, getDocs, query, where } = window.firestoreFunctions;
-    const likesRef = collection(window.db, LIKES_COLLECTION);
-    const q = query(likesRef, where('postId', '==', postId), where('authorId', '==', currentAuthorId));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
-  } catch (error) {
-    console.error('추천 확인 실패:', error);
-    return false;
-  }
-}
-
-// 추천하기
-async function toggleLike(postId) {
-  try {
-    const currentAuthorId = getAuthorId();
-    const { collection, getDocs, query, where, addDoc, deleteDoc, doc } = window.firestoreFunctions;
-    const likesRef = collection(window.db, LIKES_COLLECTION);
-    
-    // 이미 추천했는지 확인
-    const q = query(likesRef, where('postId', '==', postId), where('authorId', '==', currentAuthorId));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      // 이미 추천했으면 추천 취소
-      querySnapshot.forEach((docSnapshot) => {
-        deleteDoc(doc(window.db, LIKES_COLLECTION, docSnapshot.id));
-      });
-    } else {
-      // 추천 추가
-      await addDoc(likesRef, {
-        postId: postId,
-        authorId: currentAuthorId,
-        date: new Date().toISOString(),
-      });
-    }
-    
-    // 추천 수 업데이트
-    await updateLikeDisplay(postId);
-  } catch (error) {
-    console.error('추천 처리 실패:', error);
-    alert('추천 처리 중 오류가 발생했습니다.');
-  }
-}
-
-// 추천 수 표시 업데이트
-async function updateLikeDisplay(postId) {
-  const likeCount = await getLikeCount(postId);
-  const hasLiked = await hasUserLiked(postId);
-  
-  // 상세 페이지의 추천 버튼 업데이트
-  const likeBtn = document.getElementById('likeBtn');
-  const likeCountSpan = document.getElementById('likeCount');
-  
-  if (likeBtn && likeCountSpan) {
-    likeCountSpan.textContent = likeCount;
-    likeBtn.className = hasLiked ? 'like-btn liked' : 'like-btn';
-    likeBtn.textContent = hasLiked ? '✓ 추천됨' : '추천';
-  }
-  
-  // 목록 페이지도 업데이트 (현재 상세 페이지에 있는 경우)
-  if (currentPostId === postId) {
-    // 목록 페이지의 해당 게시물 추천 수 업데이트는 다음 렌더링 시 반영됨
-  }
-}
 
 // 이번 주 시작일(월요일)과 종료일(일요일) 계산
 function getThisWeekRange() {
@@ -564,25 +417,21 @@ async function renderPosts() {
 
   emptyState.classList.add('hidden');
   
-  // 각 게시물의 댓글 개수와 추천 수 가져오기
-  const postsWithCounts = await Promise.all(
+  // 각 게시물의 댓글 개수 가져오기
+  const postsWithCommentCount = await Promise.all(
     posts.map(async (post) => {
       const commentCount = await getCommentCount(post.id);
-      const likeCount = await getLikeCount(post.id);
-      return { ...post, commentCount, likeCount };
+      return { ...post, commentCount };
     })
   );
   
-  postsList.innerHTML = postsWithCounts.map(post => `
+  postsList.innerHTML = postsWithCommentCount.map(post => `
     <div class="post-item">
       <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
         <div class="post-meta-right">
           <div class="post-date">${formatDate(post.date)}</div>
-          <div class="post-stats">
-            <span class="post-comment-count">댓글 ${post.commentCount}</span>
-            <span class="post-like-count">추천 ${post.likeCount}</span>
-          </div>
+          <div class="post-comment-count">댓글 ${post.commentCount}</div>
         </div>
       </div>
     </div>
@@ -601,10 +450,6 @@ function renderPostDetail(postId) {
   const currentAuthorId = getAuthorId();
   const isAuthor = post.authorId === currentAuthorId;
   
-  // 추천 수와 추천 여부 가져오기
-  const likeCount = await getLikeCount(postId);
-  const hasLiked = await hasUserLiked(postId);
-  
   const detailContainer = document.getElementById('postDetail');
   detailContainer.innerHTML = `
     <div class="article-header">
@@ -614,24 +459,17 @@ function renderPostDetail(postId) {
       </div>
     </div>
     <div class="article-content">${escapeHtml(post.content)}</div>
-    <div class="article-actions">
-      <button id="likeBtn" class="like-btn ${hasLiked ? 'liked' : ''}" onclick="toggleLike('${postId}')">
-        ${hasLiked ? '✓ 추천됨' : '추천'}
-      </button>
-      <span id="likeCount" class="like-count">${likeCount}</span>
-      ${isAuthor ? `
+    ${isAuthor ? `
+    <div class="article-footer">
       <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
-      ` : ''}
     </div>
+    ` : ''}
   `;
   
   // 댓글 로드
   loadComments(postId);
   // 댓글 실시간 리스너 설정
   setupCommentsListener(postId);
-  
-  // 추천 실시간 리스너 설정
-  setupLikesListener(postId);
 }
 
 // 게시글 삭제
@@ -655,9 +493,6 @@ async function deletePost(postId) {
   try {
     // 먼저 해당 게시글의 모든 댓글과 대댓글 삭제
     await deleteAllCommentsForPost(postId);
-    
-    // 해당 게시글의 모든 추천 삭제
-    await deleteAllLikesForPost(postId);
     
     // 그 다음 게시글 삭제
     await deletePostFromFirebase(postId);
@@ -1000,31 +835,6 @@ function cancelReply(commentId) {
   }
 }
 
-// 추천 실시간 리스너 설정
-let likesListenerUnsubscribe = null;
-
-function setupLikesListener(postId) {
-  // 기존 리스너가 있으면 제거
-  if (likesListenerUnsubscribe) {
-    likesListenerUnsubscribe();
-    likesListenerUnsubscribe = null;
-  }
-  
-  try {
-    const { collection, query, where, onSnapshot } = window.firestoreFunctions;
-    const likesRef = collection(window.db, LIKES_COLLECTION);
-    const q = query(likesRef, where('postId', '==', postId));
-    
-    likesListenerUnsubscribe = onSnapshot(q, async (snapshot) => {
-      await updateLikeDisplay(postId);
-    }, (error) => {
-      console.error('추천 리스너 오류:', error);
-    });
-  } catch (error) {
-    console.error('추천 리스너 설정 실패:', error);
-  }
-}
-
 // 전역 함수로 등록 (onclick에서 사용하기 위해)
 window.showDetailView = showDetailView;
 window.deletePost = deletePost;
@@ -1033,7 +843,6 @@ window.deleteComment = deleteComment;
 window.toggleReplyForm = toggleReplyForm;
 window.submitReply = submitReply;
 window.cancelReply = cancelReply;
-window.toggleLike = toggleLike;
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', init);

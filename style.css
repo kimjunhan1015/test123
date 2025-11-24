@@ -315,19 +315,9 @@ header h1 {
   white-space: nowrap;
 }
 
-.post-stats {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
 .post-comment-count {
   color: var(--primary);
-  font-weight: 500;
-}
-
-.post-like-count {
-  color: var(--primary);
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
@@ -456,55 +446,11 @@ header h1 {
   margin-bottom: 1.5rem;
 }
 
-.article-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-  margin-top: 1.5rem;
-}
-
 .article-footer {
   display: flex;
   justify-content: flex-end;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
-}
-
-.like-btn {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.like-btn:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px var(--shadow);
-}
-
-.like-btn.liked {
-  background: var(--success);
-}
-
-.like-btn.liked:hover {
-  background: #059669;
-}
-
-.like-count {
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 600;
 }
 
 /* 댓글 섹션 */
