@@ -1,6 +1,18 @@
 // Firebase Firestore를 사용한 게시글 데이터 관리
 let posts = [];
 const COLLECTION_NAME = 'posts';
+const AUTHOR_ID_KEY = 'anonymousBoardAuthorId';
+
+// 브라우저별 고유 식별자 가져오기 또는 생성
+function getAuthorId() {
+  let authorId = localStorage.getItem(AUTHOR_ID_KEY);
+  if (!authorId) {
+    // 고유 식별자 생성 (타임스탬프 + 랜덤 문자열)
+    authorId = 'author_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem(AUTHOR_ID_KEY, authorId);
+  }
+  return authorId;
+}
 
 // 초기화
 async function init() {
@@ -162,6 +174,7 @@ async function handleSubmit(e) {
       title: title,
       content: content,
       date: new Date().toISOString(),
+      authorId: getAuthorId(), // 작성자 식별자 추가
     };
 
     await savePost(newPost);
@@ -188,17 +201,23 @@ function renderPosts() {
   }
 
   emptyState.classList.add('hidden');
-  postsList.innerHTML = posts.map(post => `
+  const currentAuthorId = getAuthorId();
+  postsList.innerHTML = posts.map(post => {
+    const isAuthor = post.authorId === currentAuthorId;
+    return `
     <div class="post-item">
       <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
         <div class="post-date">${formatDate(post.date)}</div>
       </div>
+      ${isAuthor ? `
       <div class="post-footer">
         <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
       </div>
+      ` : ''}
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // 게시글 상세 보기 렌더링
@@ -209,6 +228,9 @@ function renderPostDetail(postId) {
     return;
   }
 
+  const currentAuthorId = getAuthorId();
+  const isAuthor = post.authorId === currentAuthorId;
+  
   const detailContainer = document.getElementById('postDetail');
   detailContainer.innerHTML = `
     <div class="article-header">
@@ -218,14 +240,28 @@ function renderPostDetail(postId) {
       </div>
     </div>
     <div class="article-content">${escapeHtml(post.content)}</div>
+    ${isAuthor ? `
     <div class="article-footer">
       <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
     </div>
+    ` : ''}
   `;
 }
 
 // 게시글 삭제
 async function deletePost(postId) {
+  const post = posts.find(p => p.id === postId);
+  if (!post) {
+    alert('게시글을 찾을 수 없습니다.');
+    return;
+  }
+
+  const currentAuthorId = getAuthorId();
+  if (post.authorId !== currentAuthorId) {
+    alert('본인이 작성한 게시글만 삭제할 수 있습니다.');
+    return;
+  }
+
   if (!confirm('정말 삭제하시겠습니까?')) {
     return;
   }
