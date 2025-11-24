@@ -191,6 +191,77 @@ header h1 {
   border-color: var(--primary);
 }
 
+/* 인기글 섹션 */
+.popular-posts-section {
+  margin-bottom: 2rem;
+}
+
+.popular-posts-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.popular-post-category {
+  background: var(--surface);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--primary);
+}
+
+.popular-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.popular-post-item {
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.popular-post-item:hover {
+  background: var(--surface-light);
+}
+
+.popular-post-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  transition: color 0.3s ease;
+}
+
+.popular-post-item:hover .popular-post-title {
+  color: var(--primary);
+}
+
+.popular-post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.popular-post-comments {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.no-popular-post {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem;
+}
+
 .posts-list {
   display: grid;
   gap: 1rem;
@@ -578,6 +649,15 @@ header h1 {
 
   .btn {
     width: 100%;
+  }
+
+  .popular-posts-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .popular-post-category {
+    padding: 1rem;
   }
 }
 

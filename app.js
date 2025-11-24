@@ -284,10 +284,126 @@ async function getCommentCount(postId) {
   }
 }
 
+// 이번 주 시작일(월요일)과 종료일(일요일) 계산
+function getThisWeekRange() {
+  const now = new Date();
+  const day = now.getDay(); // 0(일요일) ~ 6(토요일)
+  const diff = day === 0 ? -6 : 1 - day; // 월요일까지의 차이
+  
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  
+  return { start: monday, end: sunday };
+}
+
+// 이번 달 시작일과 종료일 계산
+function getThisMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  
+  return { start, end };
+}
+
+// 인기글 가져오기
+async function getPopularPost(posts, dateRange) {
+  // 해당 기간의 게시물 필터링
+  const filteredPosts = posts.filter(post => {
+    const postDate = new Date(post.date);
+    return postDate >= dateRange.start && postDate <= dateRange.end;
+  });
+  
+  if (filteredPosts.length === 0) {
+    return null;
+  }
+  
+  // 각 게시물의 댓글 개수 계산
+  const postsWithCommentCount = await Promise.all(
+    filteredPosts.map(async (post) => {
+      const commentCount = await getCommentCount(post.id);
+      return { ...post, commentCount };
+    })
+  );
+  
+  // 댓글 개수로 정렬 (동점시 날짜 오름차순 - 먼저 등록된 것 우선)
+  postsWithCommentCount.sort((a, b) => {
+    if (b.commentCount !== a.commentCount) {
+      return b.commentCount - a.commentCount; // 댓글 많은 순
+    }
+    return new Date(a.date) - new Date(b.date); // 동점시 먼저 등록된 것
+  });
+  
+  return postsWithCommentCount[0]; // 가장 인기 있는 게시물
+}
+
+// 인기글 렌더링
+async function renderPopularPosts() {
+  const popularPostsSection = document.getElementById('popularPosts');
+  if (!popularPostsSection) return;
+  
+  const weekRange = getThisWeekRange();
+  const monthRange = getThisMonthRange();
+  
+  const weekPopular = await getPopularPost(posts, weekRange);
+  const monthPopular = await getPopularPost(posts, monthRange);
+  
+  let html = '<div class="popular-posts-container">';
+  
+  // 이번 주 인기글
+  html += '<div class="popular-post-category">';
+  html += '<h3 class="popular-title">이번 주 인기글</h3>';
+  if (weekPopular && weekPopular.commentCount > 0) {
+    html += `
+      <div class="popular-post-item" onclick="showDetailView('${weekPopular.id}')">
+        <div class="popular-post-title">${escapeHtml(weekPopular.title)}</div>
+        <div class="popular-post-meta">
+          <span class="popular-post-date">${formatDate(weekPopular.date)}</span>
+          <span class="popular-post-comments">댓글 ${weekPopular.commentCount}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    html += '<p class="no-popular-post">이번 주 인기글이 없습니다.</p>';
+  }
+  html += '</div>';
+  
+  // 이번 달 인기글
+  html += '<div class="popular-post-category">';
+  html += '<h3 class="popular-title">이번 달 인기글</h3>';
+  if (monthPopular && monthPopular.commentCount > 0) {
+    html += `
+      <div class="popular-post-item" onclick="showDetailView('${monthPopular.id}')">
+        <div class="popular-post-title">${escapeHtml(monthPopular.title)}</div>
+        <div class="popular-post-meta">
+          <span class="popular-post-date">${formatDate(monthPopular.date)}</span>
+          <span class="popular-post-comments">댓글 ${monthPopular.commentCount}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    html += '<p class="no-popular-post">이번 달 인기글이 없습니다.</p>';
+  }
+  html += '</div>';
+  
+  html += '</div>';
+  popularPostsSection.innerHTML = html;
+}
+
 // 게시글 목록 렌더링
 async function renderPosts() {
   const postsList = document.getElementById('postsList');
   const emptyState = document.getElementById('emptyState');
+
+  // 인기글 렌더링
+  await renderPopularPosts();
 
   if (posts.length === 0) {
     postsList.innerHTML = '';
