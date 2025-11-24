@@ -4,6 +4,7 @@ let comments = [];
 let currentPostId = null;
 const COLLECTION_NAME = 'posts';
 const COMMENTS_COLLECTION = 'comments';
+const LIKES_COLLECTION = 'likes';
 const AUTHOR_ID_KEY = 'anonymousBoardAuthorId';
 
 // 브라우저별 고유 식별자 가져오기 또는 생성
@@ -150,6 +151,43 @@ async function deleteAllCommentsForPost(postId) {
   }
 }
 
+// 게시글의 모든 추천 삭제
+async function deleteAllLikesForPost(postId) {
+  try {
+    const { collection, getDocs, query, where, doc, deleteDoc, writeBatch } = window.firestoreFunctions;
+    const likesRef = collection(window.db, LIKES_COLLECTION);
+    const q = query(likesRef, where('postId', '==', postId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return; // 추천이 없으면 종료
+    }
+    
+    // 배치로 삭제 (500개씩)
+    const batch = writeBatch(window.db);
+    let count = 0;
+    
+    querySnapshot.forEach((docSnapshot) => {
+      if (count < 500) { // Firestore 배치 제한
+        batch.delete(doc(window.db, LIKES_COLLECTION, docSnapshot.id));
+        count++;
+      }
+    });
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    
+    // 500개를 초과하는 경우 재귀 호출
+    if (querySnapshot.size > 500) {
+      await deleteAllLikesForPost(postId);
+    }
+  } catch (error) {
+    console.error('추천 일괄 삭제 실패:', error);
+    // 추천 삭제 실패해도 게시물 삭제는 계속 진행
+  }
+}
+
 // 특정 댓글의 모든 대댓글 삭제
 async function deleteAllRepliesForComment(commentId) {
   try {
@@ -284,6 +322,108 @@ async function getCommentCount(postId) {
   } catch (error) {
     console.error('댓글 개수 가져오기 실패:', error);
     return 0;
+  }
+}
+
+// 게시글의 추천 수 가져오기
+async function getLikeCount(postId) {
+  try {
+    const { collection, getDocs, query, where } = window.firestoreFunctions;
+    const likesRef = collection(window.db, LIKES_COLLECTION);
+    const q = query(likesRef, where('postId', '==', postId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('추천 수 가져오기 실패:', error);
+    return 0;
+  }
+}
+
+// 사용자가 이미 추천했는지 확인
+async function hasUserLiked(postId) {
+  try {
+    const currentAuthorId = getAuthorId();
+    const { collection, getDocs, query, where } = window.firestoreFunctions;
+    const likesRef = collection(window.db, LIKES_COLLECTION);
+    const q = query(likesRef, where('postId', '==', postId), where('authorId', '==', currentAuthorId));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error('추천 확인 실패:', error);
+    return false;
+  }
+}
+
+// 추천하기 (중복 방지)
+async function toggleLike(postId) {
+  try {
+    const currentAuthorId = getAuthorId();
+    const { collection, getDocs, query, where, addDoc, deleteDoc, doc } = window.firestoreFunctions;
+    const likesRef = collection(window.db, LIKES_COLLECTION);
+    
+    // 이미 추천했는지 확인
+    const q = query(likesRef, where('postId', '==', postId), where('authorId', '==', currentAuthorId));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // 이미 추천했으면 추천 취소
+      querySnapshot.forEach((docSnapshot) => {
+        deleteDoc(doc(window.db, LIKES_COLLECTION, docSnapshot.id));
+      });
+      await updateLikeDisplay(postId);
+    } else {
+      // 추천 추가
+      await addDoc(likesRef, {
+        postId: postId,
+        authorId: currentAuthorId,
+        date: new Date().toISOString(),
+      });
+      await updateLikeDisplay(postId);
+    }
+  } catch (error) {
+    console.error('추천 처리 실패:', error);
+    alert('추천 처리 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 추천 수 표시 업데이트
+async function updateLikeDisplay(postId) {
+  const likeCount = await getLikeCount(postId);
+  const hasLiked = await hasUserLiked(postId);
+  
+  // 상세 페이지의 추천 버튼 업데이트
+  const likeBtn = document.getElementById('likeBtn');
+  const likeCountSpan = document.getElementById('likeCount');
+  
+  if (likeBtn && likeCountSpan) {
+    likeCountSpan.textContent = likeCount;
+    likeBtn.className = hasLiked ? 'like-btn liked' : 'like-btn';
+    likeBtn.textContent = hasLiked ? '✓ 추천됨' : '추천';
+  }
+}
+
+// 추천 실시간 리스너 설정
+let likesListenerUnsubscribe = null;
+
+function setupLikesListener(postId) {
+  // 기존 리스너가 있으면 제거
+  if (likesListenerUnsubscribe) {
+    likesListenerUnsubscribe();
+    likesListenerUnsubscribe = null;
+  }
+  
+  try {
+    const { collection, query, where, onSnapshot } = window.firestoreFunctions;
+    const likesRef = collection(window.db, LIKES_COLLECTION);
+    const q = query(likesRef, where('postId', '==', postId));
+    
+    likesListenerUnsubscribe = onSnapshot(q, async (snapshot) => {
+      await updateLikeDisplay(postId);
+    }, (error) => {
+      console.error('추천 리스너 오류:', error);
+    });
+  } catch (error) {
+    console.error('추천 리스너 설정 실패:', error);
   }
 }
 
@@ -439,7 +579,7 @@ async function renderPosts() {
 }
 
 // 게시글 상세 보기 렌더링
-function renderPostDetail(postId) {
+async function renderPostDetail(postId) {
   const post = posts.find(p => p.id === postId);
   if (!post) {
     showListView();
@@ -450,6 +590,10 @@ function renderPostDetail(postId) {
   const currentAuthorId = getAuthorId();
   const isAuthor = post.authorId === currentAuthorId;
   
+  // 추천 수와 추천 여부 가져오기
+  const likeCount = await getLikeCount(postId);
+  const hasLiked = await hasUserLiked(postId);
+  
   const detailContainer = document.getElementById('postDetail');
   detailContainer.innerHTML = `
     <div class="article-header">
@@ -459,17 +603,23 @@ function renderPostDetail(postId) {
       </div>
     </div>
     <div class="article-content">${escapeHtml(post.content)}</div>
-    ${isAuthor ? `
-    <div class="article-footer">
+    <div class="article-actions">
+      <button id="likeBtn" class="like-btn ${hasLiked ? 'liked' : ''}" onclick="toggleLike('${postId}')">
+        ${hasLiked ? '✓ 추천됨' : '추천'}
+      </button>
+      <span id="likeCount" class="like-count">${likeCount}</span>
+      ${isAuthor ? `
       <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
+      ` : ''}
     </div>
-    ` : ''}
   `;
   
   // 댓글 로드
   loadComments(postId);
   // 댓글 실시간 리스너 설정
   setupCommentsListener(postId);
+  // 추천 실시간 리스너 설정
+  setupLikesListener(postId);
 }
 
 // 게시글 삭제
@@ -493,6 +643,9 @@ async function deletePost(postId) {
   try {
     // 먼저 해당 게시글의 모든 댓글과 대댓글 삭제
     await deleteAllCommentsForPost(postId);
+    
+    // 해당 게시글의 모든 추천 삭제
+    await deleteAllLikesForPost(postId);
     
     // 그 다음 게시글 삭제
     await deletePostFromFirebase(postId);
@@ -843,6 +996,7 @@ window.deleteComment = deleteComment;
 window.toggleReplyForm = toggleReplyForm;
 window.submitReply = submitReply;
 window.cancelReply = cancelReply;
+window.toggleLike = toggleLike;
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', init);
