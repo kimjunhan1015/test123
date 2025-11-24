@@ -457,8 +457,8 @@ function getThisMonthRange() {
   return { start, end };
 }
 
-// 인기글 가져오기
-async function getPopularPost(posts, dateRange) {
+// 인기글 가져오기 (댓글 개수 기준)
+async function getPopularPostByComments(posts, dateRange) {
   // 해당 기간의 게시물 필터링
   const filteredPosts = posts.filter(post => {
     const postDate = new Date(post.date);
@@ -488,26 +488,76 @@ async function getPopularPost(posts, dateRange) {
   return postsWithCommentCount[0]; // 가장 인기 있는 게시물
 }
 
+// 인기글 가져오기 (추천 수 기준)
+async function getPopularPostByLikes(posts, dateRange) {
+  // 해당 기간의 게시물 필터링
+  const filteredPosts = posts.filter(post => {
+    const postDate = new Date(post.date);
+    return postDate >= dateRange.start && postDate <= dateRange.end;
+  });
+  
+  if (filteredPosts.length === 0) {
+    return null;
+  }
+  
+  // 각 게시물의 추천 수 계산
+  const postsWithLikeCount = await Promise.all(
+    filteredPosts.map(async (post) => {
+      const likeCount = await getLikeCount(post.id);
+      return { ...post, likeCount };
+    })
+  );
+  
+  // 추천 수로 정렬 (동점시 날짜 오름차순 - 먼저 등록된 것 우선)
+  postsWithLikeCount.sort((a, b) => {
+    if (b.likeCount !== a.likeCount) {
+      return b.likeCount - a.likeCount; // 추천 많은 순
+    }
+    return new Date(a.date) - new Date(b.date); // 동점시 먼저 등록된 것
+  });
+  
+  return postsWithLikeCount[0]; // 가장 인기 있는 게시물
+}
+
 // 인기글 렌더링
 async function renderPopularPosts() {
   const popularPostsSection = document.getElementById('popularPosts');
   if (!popularPostsSection) return;
   
   const weekRange = getThisWeekRange();
-  const weekPopular = await getPopularPost(posts, weekRange);
+  const weekPopularByLikes = await getPopularPostByLikes(posts, weekRange);
+  const weekPopularByComments = await getPopularPostByComments(posts, weekRange);
   
   let html = '<div class="popular-posts-container">';
+  
+  // 이번 주 BEST 추천
+  html += '<div class="popular-post-category">';
+  html += '<h3 class="popular-title">이번 주 BEST 추천</h3>';
+  if (weekPopularByLikes && weekPopularByLikes.likeCount > 0) {
+    html += `
+      <div class="popular-post-item" onclick="showDetailView('${weekPopularByLikes.id}')">
+        <div class="popular-post-title">${escapeHtml(weekPopularByLikes.title)}</div>
+        <div class="popular-post-meta">
+          <span class="popular-post-date">${formatDate(weekPopularByLikes.date)}</span>
+          <span class="popular-post-likes">추천 ${weekPopularByLikes.likeCount}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    html += '<p class="no-popular-post">이번 주 BEST 추천이 없습니다.</p>';
+  }
+  html += '</div>';
   
   // 이번 주 BEST 댓글
   html += '<div class="popular-post-category">';
   html += '<h3 class="popular-title">이번 주 BEST 댓글</h3>';
-  if (weekPopular && weekPopular.commentCount > 0) {
+  if (weekPopularByComments && weekPopularByComments.commentCount > 0) {
     html += `
-      <div class="popular-post-item" onclick="showDetailView('${weekPopular.id}')">
-        <div class="popular-post-title">${escapeHtml(weekPopular.title)}</div>
+      <div class="popular-post-item" onclick="showDetailView('${weekPopularByComments.id}')">
+        <div class="popular-post-title">${escapeHtml(weekPopularByComments.title)}</div>
         <div class="popular-post-meta">
-          <span class="popular-post-date">${formatDate(weekPopular.date)}</span>
-          <span class="popular-post-comments">댓글 ${weekPopular.commentCount}</span>
+          <span class="popular-post-date">${formatDate(weekPopularByComments.date)}</span>
+          <span class="popular-post-comments">댓글 ${weekPopularByComments.commentCount}</span>
         </div>
       </div>
     `;
