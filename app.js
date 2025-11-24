@@ -494,16 +494,13 @@ async function renderPopularPosts() {
   if (!popularPostsSection) return;
   
   const weekRange = getThisWeekRange();
-  const monthRange = getThisMonthRange();
-  
   const weekPopular = await getPopularPost(posts, weekRange);
-  const monthPopular = await getPopularPost(posts, monthRange);
   
   let html = '<div class="popular-posts-container">';
   
-  // 이번 주 인기글
+  // 이번 주 BEST 댓글
   html += '<div class="popular-post-category">';
-  html += '<h3 class="popular-title">이번 주 인기글</h3>';
+  html += '<h3 class="popular-title">이번 주 BEST 댓글</h3>';
   if (weekPopular && weekPopular.commentCount > 0) {
     html += `
       <div class="popular-post-item" onclick="showDetailView('${weekPopular.id}')">
@@ -515,25 +512,7 @@ async function renderPopularPosts() {
       </div>
     `;
   } else {
-    html += '<p class="no-popular-post">이번 주 인기글이 없습니다.</p>';
-  }
-  html += '</div>';
-  
-  // 이번 달 인기글
-  html += '<div class="popular-post-category">';
-  html += '<h3 class="popular-title">이번 달 인기글</h3>';
-  if (monthPopular && monthPopular.commentCount > 0) {
-    html += `
-      <div class="popular-post-item" onclick="showDetailView('${monthPopular.id}')">
-        <div class="popular-post-title">${escapeHtml(monthPopular.title)}</div>
-        <div class="popular-post-meta">
-          <span class="popular-post-date">${formatDate(monthPopular.date)}</span>
-          <span class="popular-post-comments">댓글 ${monthPopular.commentCount}</span>
-        </div>
-      </div>
-    `;
-  } else {
-    html += '<p class="no-popular-post">이번 달 인기글이 없습니다.</p>';
+    html += '<p class="no-popular-post">이번 주 BEST 댓글이 없습니다.</p>';
   }
   html += '</div>';
   
