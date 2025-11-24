@@ -5,18 +5,18 @@
 }
 
 :root {
-  --primary: #6366f1;
-  --primary-dark: #4f46e5;
-  --secondary: #8b5cf6;
-  --background: #0f172a;
-  --surface: #1e293b;
-  --surface-light: #334155;
-  --text: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --border: #334155;
+  --primary: #10b981;
+  --primary-dark: #059669;
+  --secondary: #34d399;
+  --background: #ffffff;
+  --surface: #f9fafb;
+  --surface-light: #f3f4f6;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
   --success: #10b981;
   --danger: #ef4444;
-  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow: rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -48,6 +48,7 @@ header h1 {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 0.5rem;
+  color: var(--primary);
 }
 
 .subtitle {
@@ -131,7 +132,7 @@ header h1 {
 .form-group textarea {
   width: 100%;
   padding: 0.75rem;
-  background: var(--background);
+  background: #ffffff;
   border: 2px solid var(--border);
   border-radius: 0.5rem;
   color: var(--text);
@@ -182,10 +183,12 @@ header h1 {
 .btn-secondary {
   background: var(--surface-light);
   color: var(--text);
+  border: 2px solid var(--border);
 }
 
 .btn-secondary:hover {
   background: var(--border);
+  border-color: var(--primary);
 }
 
 .posts-list {
@@ -286,7 +289,7 @@ header h1 {
 
 .back-btn {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   color: var(--text);
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
@@ -299,6 +302,7 @@ header h1 {
 .back-btn:hover {
   background: var(--surface-light);
   border-color: var(--primary);
+  color: var(--primary);
 }
 
 .post-article {
