@@ -388,8 +388,18 @@ async function loadComments(postId) {
   try {
     const { collection, getDocs, query, orderBy, where } = window.firestoreFunctions;
     const commentsRef = collection(window.db, COMMENTS_COLLECTION);
-    const q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
-    const querySnapshot = await getDocs(q);
+    
+    let querySnapshot;
+    try {
+      // orderBy를 포함한 쿼리 시도 (인덱스가 있으면 작동)
+      const q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
+      querySnapshot = await getDocs(q);
+    } catch (indexError) {
+      // 인덱스가 없으면 where만 사용
+      console.warn('인덱스가 없어 날짜 정렬을 건너뜁니다. 모든 댓글을 불러온 후 정렬합니다.');
+      const q = query(commentsRef, where('postId', '==', postId));
+      querySnapshot = await getDocs(q);
+    }
     
     comments = [];
     querySnapshot.forEach((doc) => {
@@ -399,20 +409,45 @@ async function loadComments(postId) {
       });
     });
     
+    // 클라이언트 측에서 날짜 정렬
+    comments.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA - dateB;
+    });
+    
     renderComments();
   } catch (error) {
     console.error('댓글 불러오기 실패:', error);
+    // 에러 메시지를 콘솔에만 표시하고 사용자에게는 조용히 처리
   }
 }
 
 // 댓글 실시간 리스너 설정
+let commentsListenerUnsubscribe = null;
+
 function setupCommentsListener(postId) {
+  // 기존 리스너가 있으면 제거
+  if (commentsListenerUnsubscribe) {
+    commentsListenerUnsubscribe();
+    commentsListenerUnsubscribe = null;
+  }
+  
   try {
     const { collection, query, orderBy, where, onSnapshot } = window.firestoreFunctions;
     const commentsRef = collection(window.db, COMMENTS_COLLECTION);
-    const q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
     
-    onSnapshot(q, (snapshot) => {
+    // 먼저 orderBy를 포함한 쿼리 시도
+    let q;
+    try {
+      q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
+    } catch (indexError) {
+      // 인덱스가 없으면 where만 사용
+      console.warn('인덱스가 없어 날짜 정렬을 건너뜁니다.');
+      q = query(commentsRef, where('postId', '==', postId));
+    }
+    
+    commentsListenerUnsubscribe = onSnapshot(q, (snapshot) => {
       comments = [];
       snapshot.forEach((doc) => {
         comments.push({
@@ -420,7 +455,37 @@ function setupCommentsListener(postId) {
           ...doc.data()
         });
       });
+      
+      // 클라이언트 측에서 날짜 정렬
+      comments.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA - dateB;
+      });
+      
       renderComments();
+    }, (error) => {
+      console.error('댓글 리스너 오류:', error);
+      // 인덱스 오류인 경우 where만 사용하여 재시도
+      if (error.code === 'failed-precondition') {
+        console.log('인덱스 오류로 인해 where만 사용하여 재시도합니다.');
+        const simpleQ = query(commentsRef, where('postId', '==', postId));
+        commentsListenerUnsubscribe = onSnapshot(simpleQ, (snapshot) => {
+          comments = [];
+          snapshot.forEach((doc) => {
+            comments.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+          comments.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA - dateB;
+          });
+          renderComments();
+        });
+      }
     });
   } catch (error) {
     console.error('댓글 리스너 설정 실패:', error);
@@ -463,7 +528,7 @@ async function submitComment(parentCommentId = null) {
     }
   } catch (error) {
     console.error('댓글 작성 실패:', error);
-    alert('댓글 작성 중 오류가 발생했습니다.');
+    alert('댓글 작성 중 오류가 발생했습니다: ' + error.message);
   }
 }
 
