@@ -270,8 +270,22 @@ async function handleSubmit(e) {
   }
 }
 
+// 게시글의 댓글 개수 가져오기
+async function getCommentCount(postId) {
+  try {
+    const { collection, getDocs, query, where } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    const q = query(commentsRef, where('postId', '==', postId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.size; // 댓글과 대댓글 모두 포함
+  } catch (error) {
+    console.error('댓글 개수 가져오기 실패:', error);
+    return 0;
+  }
+}
+
 // 게시글 목록 렌더링
-function renderPosts() {
+async function renderPosts() {
   const postsList = document.getElementById('postsList');
   const emptyState = document.getElementById('emptyState');
 
@@ -282,11 +296,23 @@ function renderPosts() {
   }
 
   emptyState.classList.add('hidden');
-  postsList.innerHTML = posts.map(post => `
+  
+  // 각 게시물의 댓글 개수 가져오기
+  const postsWithCommentCount = await Promise.all(
+    posts.map(async (post) => {
+      const commentCount = await getCommentCount(post.id);
+      return { ...post, commentCount };
+    })
+  );
+  
+  postsList.innerHTML = postsWithCommentCount.map(post => `
     <div class="post-item">
       <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
-        <div class="post-date">${formatDate(post.date)}</div>
+        <div class="post-meta-right">
+          <div class="post-date">${formatDate(post.date)}</div>
+          <div class="post-comment-count">댓글 ${post.commentCount}</div>
+        </div>
       </div>
     </div>
   `).join('');
