@@ -1,46 +1,71 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>웹 테트리스</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="layout">
-      <section class="game-panel">
-        <canvas id="tetris" width="300" height="600"></canvas>
-        <div class="overlay hidden" id="overlay">
-          <div class="overlay__content">
-            <h1 id="overlay-title">게임 시작</h1>
-            <p id="overlay-message">스페이스바를 눌러 시작하세요</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>익명 게시판</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>익명 게시판</h1>
+      <p class="subtitle">자유롭게 글을 작성하고 소통하세요</p>
+    </header>
+
+    <main>
+      <div class="view-toggle">
+        <button id="listBtn" class="active">목록</button>
+        <button id="writeBtn">글쓰기</button>
+      </div>
+
+      <!-- 글쓰기 화면 -->
+      <section id="writeView" class="view hidden">
+        <div class="write-form">
+          <h2>새 글 작성</h2>
+          <form id="postForm">
+            <div class="form-group">
+              <label for="postTitle">제목</label>
+              <input type="text" id="postTitle" required maxlength="100" placeholder="제목을 입력하세요">
+            </div>
+            <div class="form-group">
+              <label for="postContent">내용</label>
+              <textarea id="postContent" required maxlength="2000" placeholder="내용을 입력하세요" rows="10"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
+              <button type="submit" class="btn btn-primary">작성하기</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 목록 화면 -->
+      <section id="listView" class="view">
+        <div class="posts-container">
+          <div id="postsList" class="posts-list">
+            <!-- 게시글이 여기에 동적으로 추가됩니다 -->
+          </div>
+          <div id="emptyState" class="empty-state hidden">
+            <p>아직 작성된 글이 없습니다.</p>
+            <p>첫 번째 글을 작성해보세요!</p>
           </div>
         </div>
       </section>
-      <aside class="sidebar">
-        <h2>점수판</h2>
-        <div class="scoreboard">
-          <div class="score">점수: <span id="score">0</span></div>
-          <div class="level">레벨: <span id="level">1</span></div>
-          <div class="lines">줄 제거: <span id="lines">0</span></div>
+
+      <!-- 상세 화면 -->
+      <section id="detailView" class="view hidden">
+        <div class="post-detail">
+          <button class="back-btn" id="backBtn">← 목록으로</button>
+          <article id="postDetail" class="post-article">
+            <!-- 게시글 상세 내용이 여기에 동적으로 추가됩니다 -->
+          </article>
         </div>
-        <h2>다음 블록</h2>
-        <canvas id="next" width="120" height="120"></canvas>
-        <h2>조작법</h2>
-        <ul class="controls">
-          <li>←/→ : 좌우 이동</li>
-          <li>↑ : 회전</li>
-          <li>↓ : 빠르게 내리기</li>
-          <li>Space : 하드 드롭 / 시작</li>
-          <li>P : 일시정지</li>
-        </ul>
-      </aside>
+      </section>
     </main>
-    <script src="game.js"></script>
-  </body>
+  </div>
+
+  <script src="app.js"></script>
+</body>
 </html>
-
-
-
-
 
