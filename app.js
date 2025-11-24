@@ -201,23 +201,14 @@ function renderPosts() {
   }
 
   emptyState.classList.add('hidden');
-  const currentAuthorId = getAuthorId();
-  postsList.innerHTML = posts.map(post => {
-    const isAuthor = post.authorId === currentAuthorId;
-    return `
+  postsList.innerHTML = posts.map(post => `
     <div class="post-item">
       <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
         <div class="post-date">${formatDate(post.date)}</div>
       </div>
-      ${isAuthor ? `
-      <div class="post-footer">
-        <button class="delete-btn" onclick="deletePost('${post.id}')">삭제</button>
-      </div>
-      ` : ''}
     </div>
-    `;
-  }).join('');
+  `).join('');
 }
 
 // 게시글 상세 보기 렌더링
