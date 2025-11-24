@@ -38,7 +38,7 @@ header {
 }
 
 .header-card {
-  background: var(--surface);
+  background: var(--primary);
   padding: 2rem;
   border-radius: 0.75rem;
   border: 2px solid var(--primary);
@@ -48,12 +48,12 @@ header {
 header h1 {
   font-size: 2rem;
   font-weight: 600;
-  color: var(--primary);
+  color: #ffffff;
   margin-bottom: 0.75rem;
 }
 
 .subtitle {
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 1rem;
 }
 
