@@ -315,9 +315,19 @@ header h1 {
   white-space: nowrap;
 }
 
+.post-stats {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.post-like-count {
+  color: var(--primary);
+  font-weight: 500;
+}
+
 .post-comment-count {
   color: var(--primary);
-  font-size: 0.875rem;
   font-weight: 500;
 }
 

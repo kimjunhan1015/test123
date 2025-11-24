@@ -557,21 +557,25 @@ async function renderPosts() {
 
   emptyState.classList.add('hidden');
   
-  // 각 게시물의 댓글 개수 가져오기
-  const postsWithCommentCount = await Promise.all(
+  // 각 게시물의 댓글 개수와 추천 수 가져오기
+  const postsWithCounts = await Promise.all(
     posts.map(async (post) => {
       const commentCount = await getCommentCount(post.id);
-      return { ...post, commentCount };
+      const likeCount = await getLikeCount(post.id);
+      return { ...post, commentCount, likeCount };
     })
   );
   
-  postsList.innerHTML = postsWithCommentCount.map(post => `
+  postsList.innerHTML = postsWithCounts.map(post => `
     <div class="post-item">
       <div class="post-header" onclick="showDetailView('${post.id}')">
         <div class="post-title">${escapeHtml(post.title)}</div>
         <div class="post-meta-right">
           <div class="post-date">${formatDate(post.date)}</div>
-          <div class="post-comment-count">댓글 ${post.commentCount}</div>
+          <div class="post-stats">
+            <span class="post-like-count">추천 ${post.likeCount}</span>
+            <span class="post-comment-count">댓글 ${post.commentCount}</span>
+          </div>
         </div>
       </div>
     </div>
