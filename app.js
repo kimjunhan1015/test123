@@ -110,6 +110,74 @@ async function deletePostFromFirebase(postId) {
   }
 }
 
+// 게시글의 모든 댓글과 대댓글 삭제
+async function deleteAllCommentsForPost(postId) {
+  try {
+    const { collection, getDocs, query, where, doc, deleteDoc, writeBatch } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    const q = query(commentsRef, where('postId', '==', postId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return; // 댓글이 없으면 종료
+    }
+    
+    // 배치로 삭제 (500개씩)
+    const batch = writeBatch(window.db);
+    let count = 0;
+    
+    querySnapshot.forEach((docSnapshot) => {
+      if (count < 500) { // Firestore 배치 제한
+        batch.delete(doc(window.db, COMMENTS_COLLECTION, docSnapshot.id));
+        count++;
+      }
+    });
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    
+    // 500개를 초과하는 경우 재귀 호출
+    if (querySnapshot.size > 500) {
+      await deleteAllCommentsForPost(postId);
+    }
+  } catch (error) {
+    console.error('댓글 일괄 삭제 실패:', error);
+    throw error;
+  }
+}
+
+// 특정 댓글의 모든 대댓글 삭제
+async function deleteAllRepliesForComment(commentId) {
+  try {
+    const { collection, getDocs, query, where, doc, deleteDoc, writeBatch } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    const q = query(commentsRef, where('parentCommentId', '==', commentId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return; // 대댓글이 없으면 종료
+    }
+    
+    // 재귀적으로 모든 하위 대댓글도 삭제
+    const deletePromises = [];
+    querySnapshot.forEach((docSnapshot) => {
+      const replyId = docSnapshot.id;
+      // 각 대댓글의 하위 대댓글도 재귀적으로 삭제
+      deletePromises.push(deleteAllRepliesForComment(replyId));
+      // 대댓글 자체도 삭제 목록에 추가
+      deletePromises.push(
+        deleteDoc(doc(window.db, COMMENTS_COLLECTION, replyId))
+      );
+    });
+    
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error('대댓글 일괄 삭제 실패:', error);
+    throw error;
+  }
+}
+
 // 에러 메시지 표시
 function showError(message) {
   const errorDiv = document.createElement('div');
@@ -277,6 +345,10 @@ async function deletePost(postId) {
   }
 
   try {
+    // 먼저 해당 게시글의 모든 댓글과 대댓글 삭제
+    await deleteAllCommentsForPost(postId);
+    
+    // 그 다음 게시글 삭제
     await deletePostFromFirebase(postId);
     
     // 현재 뷰에 따라 처리
@@ -413,6 +485,10 @@ async function deleteComment(commentId) {
   }
   
   try {
+    // 먼저 해당 댓글의 모든 대댓글 삭제
+    await deleteAllRepliesForComment(commentId);
+    
+    // 그 다음 댓글 삭제
     const { doc, deleteDoc } = window.firestoreFunctions;
     const commentRef = doc(window.db, COMMENTS_COLLECTION, commentId);
     await deleteDoc(commentRef);
