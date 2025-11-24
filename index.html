@@ -8,7 +8,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, onSnapshot, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
     import { firebaseConfig } from './firebase-config.js';
     
     // Firebase 초기화
@@ -25,7 +25,8 @@
       doc,
       query,
       orderBy,
-      onSnapshot
+      onSnapshot,
+      where
     };
   </script>
 </head>
@@ -86,6 +87,17 @@
           <article id="postDetail" class="post-article">
             <!-- 게시글 상세 내용이 여기에 동적으로 추가됩니다 -->
           </article>
+          <!-- 댓글 섹션 -->
+          <div class="comments-section">
+            <h3 class="comments-title">댓글</h3>
+            <div class="comment-form">
+              <textarea id="commentContent" placeholder="댓글을 입력하세요..." rows="3" maxlength="500"></textarea>
+              <button class="btn btn-primary comment-submit-btn" onclick="submitComment()">댓글 작성</button>
+            </div>
+            <div id="commentsList" class="comments-list">
+              <!-- 댓글이 여기에 동적으로 추가됩니다 -->
+            </div>
+          </div>
         </div>
       </section>
     </main>

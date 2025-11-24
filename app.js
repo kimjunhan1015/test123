@@ -1,6 +1,9 @@
 // Firebase Firestore를 사용한 게시글 데이터 관리
 let posts = [];
+let comments = [];
+let currentPostId = null;
 const COLLECTION_NAME = 'posts';
+const COMMENTS_COLLECTION = 'comments';
 const AUTHOR_ID_KEY = 'anonymousBoardAuthorId';
 
 // 브라우저별 고유 식별자 가져오기 또는 생성
@@ -229,6 +232,7 @@ function renderPostDetail(postId) {
     return;
   }
 
+  currentPostId = postId;
   const currentAuthorId = getAuthorId();
   const isAuthor = post.authorId === currentAuthorId;
   
@@ -247,6 +251,11 @@ function renderPostDetail(postId) {
     </div>
     ` : ''}
   `;
+  
+  // 댓글 로드
+  loadComments(postId);
+  // 댓글 실시간 리스너 설정
+  setupCommentsListener(postId);
 }
 
 // 게시글 삭제
@@ -302,9 +311,251 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// 댓글 불러오기
+async function loadComments(postId) {
+  try {
+    const { collection, getDocs, query, orderBy, where } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    const q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
+    const querySnapshot = await getDocs(q);
+    
+    comments = [];
+    querySnapshot.forEach((doc) => {
+      comments.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    renderComments();
+  } catch (error) {
+    console.error('댓글 불러오기 실패:', error);
+  }
+}
+
+// 댓글 실시간 리스너 설정
+function setupCommentsListener(postId) {
+  try {
+    const { collection, query, orderBy, where, onSnapshot } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    const q = query(commentsRef, where('postId', '==', postId), orderBy('date', 'asc'));
+    
+    onSnapshot(q, (snapshot) => {
+      comments = [];
+      snapshot.forEach((doc) => {
+        comments.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      renderComments();
+    });
+  } catch (error) {
+    console.error('댓글 리스너 설정 실패:', error);
+  }
+}
+
+// 댓글 작성
+async function submitComment(parentCommentId = null) {
+  const content = document.getElementById('commentContent').value.trim();
+  
+  if (!content) {
+    alert('댓글 내용을 입력해주세요.');
+    return;
+  }
+  
+  if (!currentPostId) {
+    alert('게시글을 찾을 수 없습니다.');
+    return;
+  }
+  
+  try {
+    const { collection, addDoc } = window.firestoreFunctions;
+    const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+    await addDoc(commentsRef, {
+      postId: currentPostId,
+      parentCommentId: parentCommentId,
+      authorId: getAuthorId(),
+      content: content,
+      date: new Date().toISOString(),
+    });
+    
+    document.getElementById('commentContent').value = '';
+    
+    // 대댓글 작성 폼 숨기기
+    if (parentCommentId) {
+      const replyForm = document.getElementById(`replyForm-${parentCommentId}`);
+      if (replyForm) {
+        replyForm.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('댓글 작성 실패:', error);
+    alert('댓글 작성 중 오류가 발생했습니다.');
+  }
+}
+
+// 댓글 삭제
+async function deleteComment(commentId) {
+  if (!confirm('정말 삭제하시겠습니까?')) {
+    return;
+  }
+  
+  const comment = comments.find(c => c.id === commentId);
+  if (!comment) {
+    return;
+  }
+  
+  const currentAuthorId = getAuthorId();
+  if (comment.authorId !== currentAuthorId) {
+    alert('본인이 작성한 댓글만 삭제할 수 있습니다.');
+    return;
+  }
+  
+  try {
+    const { doc, deleteDoc } = window.firestoreFunctions;
+    const commentRef = doc(window.db, COMMENTS_COLLECTION, commentId);
+    await deleteDoc(commentRef);
+  } catch (error) {
+    console.error('댓글 삭제 실패:', error);
+    alert('댓글 삭제 중 오류가 발생했습니다.');
+  }
+}
+
+// 댓글 렌더링
+function renderComments() {
+  const commentsList = document.getElementById('commentsList');
+  if (!commentsList) return;
+  
+  const currentAuthorId = getAuthorId();
+  
+  // 일반 댓글과 대댓글 분리
+  const topLevelComments = comments.filter(c => !c.parentCommentId);
+  
+  if (topLevelComments.length === 0) {
+    commentsList.innerHTML = '<p class="no-comments">아직 댓글이 없습니다.</p>';
+    return;
+  }
+  
+  commentsList.innerHTML = topLevelComments.map(comment => {
+    const isAuthor = comment.authorId === currentAuthorId;
+    const replies = comments.filter(c => c.parentCommentId === comment.id);
+    
+    return renderCommentItem(comment, isAuthor, replies, currentAuthorId);
+  }).join('');
+}
+
+// 댓글 아이템 렌더링
+function renderCommentItem(comment, isAuthor, replies, currentAuthorId) {
+  let html = `
+    <div class="comment-item" data-comment-id="${comment.id}">
+      <div class="comment-content">
+        <div class="comment-text">${escapeHtml(comment.content)}</div>
+        <div class="comment-meta">
+          <span class="comment-date">${formatDate(comment.date)}</span>
+          <div class="comment-actions">
+            <button class="reply-btn" onclick="toggleReplyForm('${comment.id}')">답글</button>
+            ${isAuthor ? `<button class="delete-comment-btn" onclick="deleteComment('${comment.id}')">삭제</button>` : ''}
+          </div>
+        </div>
+      </div>
+      <div id="replyForm-${comment.id}" class="reply-form hidden">
+        <textarea id="replyContent-${comment.id}" placeholder="답글을 입력하세요..." rows="2" maxlength="500"></textarea>
+        <div class="reply-form-actions">
+          <button class="btn btn-secondary btn-small" onclick="cancelReply('${comment.id}')">취소</button>
+          <button class="btn btn-primary btn-small" onclick="submitReply('${comment.id}')">작성</button>
+        </div>
+      </div>
+      ${replies.length > 0 ? `
+      <div class="replies">
+        ${replies.map(reply => {
+          const isReplyAuthor = reply.authorId === currentAuthorId;
+          return `
+          <div class="reply-item">
+            <div class="comment-content">
+              <div class="comment-text">${escapeHtml(reply.content)}</div>
+              <div class="comment-meta">
+                <span class="comment-date">${formatDate(reply.date)}</span>
+                ${isReplyAuthor ? `<button class="delete-comment-btn" onclick="deleteComment('${reply.id}')">삭제</button>` : ''}
+              </div>
+            </div>
+          </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+    </div>
+  `;
+  
+  return html;
+}
+
+// 답글 폼 토글
+function toggleReplyForm(commentId) {
+  const replyForm = document.getElementById(`replyForm-${commentId}`);
+  if (replyForm) {
+    replyForm.classList.toggle('hidden');
+    if (!replyForm.classList.contains('hidden')) {
+      const textarea = document.getElementById(`replyContent-${commentId}`);
+      if (textarea) {
+        textarea.focus();
+      }
+    }
+  }
+}
+
+// 답글 작성
+function submitReply(parentCommentId) {
+  const textarea = document.getElementById(`replyContent-${parentCommentId}`);
+  if (!textarea) return;
+  
+  const content = textarea.value.trim();
+  if (!content) {
+    alert('답글 내용을 입력해주세요.');
+    return;
+  }
+  
+  // 댓글 작성 함수 호출
+  const { collection, addDoc } = window.firestoreFunctions;
+  const commentsRef = collection(window.db, COMMENTS_COLLECTION);
+  addDoc(commentsRef, {
+    postId: currentPostId,
+    parentCommentId: parentCommentId,
+    authorId: getAuthorId(),
+    content: content,
+    date: new Date().toISOString(),
+  }).then(() => {
+    textarea.value = '';
+    const replyForm = document.getElementById(`replyForm-${parentCommentId}`);
+    if (replyForm) {
+      replyForm.classList.add('hidden');
+    }
+  }).catch(error => {
+    console.error('답글 작성 실패:', error);
+    alert('답글 작성 중 오류가 발생했습니다.');
+  });
+}
+
+// 답글 취소
+function cancelReply(commentId) {
+  const replyForm = document.getElementById(`replyForm-${commentId}`);
+  const textarea = document.getElementById(`replyContent-${commentId}`);
+  if (replyForm) {
+    replyForm.classList.add('hidden');
+  }
+  if (textarea) {
+    textarea.value = '';
+  }
+}
+
 // 전역 함수로 등록 (onclick에서 사용하기 위해)
 window.showDetailView = showDetailView;
 window.deletePost = deletePost;
+window.submitComment = submitComment;
+window.deleteComment = deleteComment;
+window.toggleReplyForm = toggleReplyForm;
+window.submitReply = submitReply;
+window.cancelReply = cancelReply;
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', init);
