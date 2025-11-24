@@ -273,34 +273,16 @@ async function deletePost(postId) {
   }
 }
 
-// 날짜 포맷팅
+// 날짜 포맷팅 (yyyy-mm-dd hh:mm 형식)
 function formatDate(dateString) {
   const date = new Date(dateString);
-  const now = new Date();
-  const diff = now - date;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
   
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (seconds < 60) {
-    return '방금 전';
-  } else if (minutes < 60) {
-    return `${minutes}분 전`;
-  } else if (hours < 24) {
-    return `${hours}시간 전`;
-  } else if (days < 7) {
-    return `${days}일 전`;
-  } else {
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
+  return `${year}-${month}-${day}  ${hours}:${minutes}`;
 }
 
 // HTML 이스케이프 (XSS 방지)
