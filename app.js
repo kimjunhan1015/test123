@@ -28,11 +28,20 @@ async function init() {
   
   await loadPosts();
   setupEventListeners();
-  showListView();
+  await showListView();
   setupRealtimeListener();
+  
   // 초기 로드 시 목록 버튼 숨기기
-  document.getElementById('listBtn').style.display = 'none';
-  document.getElementById('writeBtn').style.display = 'none';
+  const listBtn = document.getElementById('listBtn');
+  const writeBtn = document.getElementById('writeBtn');
+  if (listBtn) listBtn.style.display = 'none';
+  if (writeBtn) writeBtn.style.display = 'none';
+  
+  // view-toggle 숨기기
+  const viewToggle = document.querySelector('.view-toggle');
+  if (viewToggle) {
+    viewToggle.style.display = 'none';
+  }
 }
 
 // Firebase에서 게시글 불러오기
@@ -240,7 +249,7 @@ function setupEventListeners() {
 }
 
 // 뷰 전환 함수들
-function showListView() {
+async function showListView() {
   document.getElementById('listView').classList.remove('hidden');
   document.getElementById('writeView').classList.add('hidden');
   document.getElementById('detailView').classList.add('hidden');
@@ -248,7 +257,14 @@ function showListView() {
   document.getElementById('listBtn').style.display = 'none'; // 목록 버튼 숨기기
   document.getElementById('writeBtn').classList.remove('active');
   document.getElementById('writeBtn').style.display = 'none'; // 상단 글쓰기 버튼 숨기기
-  renderPosts();
+  
+  // view-toggle 전체 숨기기
+  const viewToggle = document.querySelector('.view-toggle');
+  if (viewToggle) {
+    viewToggle.style.display = 'none';
+  }
+  
+  await renderPosts();
 }
 
 function showWriteView() {
@@ -259,6 +275,13 @@ function showWriteView() {
   document.getElementById('listBtn').style.display = 'block'; // 글쓰기 화면에서는 목록 버튼 표시
   document.getElementById('writeBtn').classList.add('active');
   document.getElementById('writeBtn').style.display = 'block'; // 글쓰기 화면에서는 글쓰기 버튼 표시
+  
+  // view-toggle 표시
+  const viewToggle = document.querySelector('.view-toggle');
+  if (viewToggle) {
+    viewToggle.style.display = 'flex';
+  }
+  
   document.getElementById('postForm').reset();
 }
 
@@ -268,6 +291,13 @@ function showDetailView(postId) {
   document.getElementById('detailView').classList.remove('hidden');
   document.getElementById('listBtn').style.display = 'none'; // 상세 화면에서도 목록 버튼 숨기기
   document.getElementById('writeBtn').style.display = 'none'; // 상세 화면에서도 글쓰기 버튼 숨기기
+  
+  // view-toggle 숨기기
+  const viewToggle = document.querySelector('.view-toggle');
+  if (viewToggle) {
+    viewToggle.style.display = 'none';
+  }
+  
   renderPostDetail(postId);
 }
 
