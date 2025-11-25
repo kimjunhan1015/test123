@@ -1039,6 +1039,7 @@ function updatePaginationButtons(totalPages) {
   const pagination = document.getElementById('pagination');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const pageInfo = document.getElementById('pageInfo');
   
   if (totalPages <= 1) {
     pagination.classList.add('hidden');
@@ -1046,6 +1047,9 @@ function updatePaginationButtons(totalPages) {
   }
   
   pagination.classList.remove('hidden');
+  
+  // 페이지 정보 업데이트
+  pageInfo.textContent = `${currentPage} / ${totalPages}`;
   
   // 이전 버튼 활성화/비활성화
   if (currentPage === 1) {
