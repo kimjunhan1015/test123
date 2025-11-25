@@ -1041,14 +1041,16 @@ function updatePaginationButtons(totalPages) {
   const nextBtn = document.getElementById('nextBtn');
   const pageInfo = document.getElementById('pageInfo');
   
-  if (totalPages <= 1) {
+  // 게시물이 없으면 페이지네이션 숨기기
+  if (posts.length === 0) {
     pagination.classList.add('hidden');
     return;
   }
   
+  // 항상 페이지네이션 표시 (게시물이 있으면)
   pagination.classList.remove('hidden');
   
-  // 페이지 정보 업데이트
+  // 페이지 정보 업데이트 (항상 표시)
   pageInfo.textContent = `${currentPage} / ${totalPages}`;
   
   // 이전 버튼 활성화/비활성화
