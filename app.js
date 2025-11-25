@@ -2,6 +2,8 @@
 let posts = [];
 let comments = [];
 let currentPostId = null;
+let currentPage = 1;
+const POSTS_PER_PAGE = 20;
 const COLLECTION_NAME = 'posts';
 const COMMENTS_COLLECTION = 'comments';
 const LIKES_COLLECTION = 'likes';
@@ -251,6 +253,7 @@ async function showListView() {
   document.getElementById('listBtn').style.display = 'none'; // 목록 버튼 숨기기
   document.getElementById('writeBtn').classList.remove('active');
   document.getElementById('writeBtn').style.display = 'none'; // 상단 글쓰기 버튼 숨기기
+  currentPage = 1; // 목록으로 돌아올 때 첫 페이지로 리셋
   await renderPosts();
 }
 
@@ -581,14 +584,21 @@ async function renderPosts() {
   if (posts.length === 0) {
     postsList.innerHTML = '';
     emptyState.classList.remove('hidden');
+    document.getElementById('pagination').classList.add('hidden');
     return;
   }
 
   emptyState.classList.add('hidden');
   
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
+  const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+  const endIndex = startIndex + POSTS_PER_PAGE;
+  const currentPagePosts = posts.slice(startIndex, endIndex);
+  
   // 각 게시물의 댓글 개수와 추천 수 가져오기
   const postsWithCounts = await Promise.all(
-    posts.map(async (post) => {
+    currentPagePosts.map(async (post) => {
       const commentCount = await getCommentCount(post.id);
       const likeCount = await getLikeCount(post.id);
       return { ...post, commentCount, likeCount };
@@ -609,6 +619,9 @@ async function renderPosts() {
       </div>
     </div>
   `).join('');
+  
+  // 페이지네이션 버튼 업데이트
+  updatePaginationButtons(totalPages);
 }
 
 // 게시글 상세 보기 렌더링
@@ -1021,10 +1034,63 @@ function cancelReply(commentId) {
   }
 }
 
+// 페이지네이션 함수들
+function updatePaginationButtons(totalPages) {
+  const pagination = document.getElementById('pagination');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (totalPages <= 1) {
+    pagination.classList.add('hidden');
+    return;
+  }
+  
+  pagination.classList.remove('hidden');
+  
+  // 이전 버튼 활성화/비활성화
+  if (currentPage === 1) {
+    prevBtn.disabled = true;
+    prevBtn.classList.add('disabled');
+  } else {
+    prevBtn.disabled = false;
+    prevBtn.classList.remove('disabled');
+  }
+  
+  // 다음 버튼 활성화/비활성화
+  if (currentPage >= totalPages) {
+    nextBtn.disabled = true;
+    nextBtn.classList.add('disabled');
+  } else {
+    nextBtn.disabled = false;
+    nextBtn.classList.remove('disabled');
+  }
+}
+
+function goToPreviousPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderPosts();
+    // 페이지 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function goToNextPage() {
+  const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderPosts();
+    // 페이지 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
 // 전역 함수로 등록 (onclick에서 사용하기 위해)
 window.showDetailView = showDetailView;
 window.deletePost = deletePost;
 window.submitComment = submitComment;
+window.goToPreviousPage = goToPreviousPage;
+window.goToNextPage = goToNextPage;
 window.deleteComment = deleteComment;
 window.toggleReplyForm = toggleReplyForm;
 window.submitReply = submitReply;
