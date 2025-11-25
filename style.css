@@ -271,7 +271,7 @@ header h1 {
 .posts-list {
   display: grid;
   gap: 0.75rem;
-  background: #ffffff;
+  background: var(--surface);
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 2px solid var(--primary);
